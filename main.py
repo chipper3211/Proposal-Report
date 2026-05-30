@@ -4,6 +4,10 @@ from tkinter import ttk, messagebox
 import json
 from datetime import datetime
 import uuid
+import heapq
+import random
+import copy
+import time
 
 # =========================
 # 路徑設定
@@ -32,22 +36,86 @@ def save_data(data):
 # =========================
 # 排序
 # =========================
+def get_sort_key(task, mode="priority"):
 
-def sort_tasks(tasks):
+    deadline_time = datetime.strptime(
+        task["deadline"],
+        "%Y-%m-%d %H:%M"
+    )
+
+    if mode == "deadline":
+        return (
+            task["completed"],
+            deadline_time,
+            -task["priority"]
+        )
+
+    return (
+        task["completed"],
+        -task["priority"],
+        deadline_time
+    )
+
+def timsort_tasks(tasks, mode="priority"):
 
     return sorted(
         tasks,
-        key=lambda task: (
-            task["completed"],  # 未完成優先
-            -task["priority"],  # 高優先級優先
-            datetime.strptime(
-                task["deadline"],
-                "%Y-%m-%d %H:%M"
-            )
-        )
+        key=lambda task: get_sort_key(task, mode)
     )
 
 
+def bubble_sort_tasks(tasks, mode="priority"):
+
+    tasks = tasks.copy()
+    n = len(tasks)
+
+    for i in range(n):
+
+        for j in range(0, n - i - 1):
+
+            if get_sort_key(tasks[j], mode) > get_sort_key(tasks[j + 1], mode):
+
+                tasks[j], tasks[j + 1] = tasks[j + 1], tasks[j]
+
+    return tasks
+
+
+def heap_sort_tasks(tasks, mode="priority"):
+
+    heap = []
+
+    for index, task in enumerate(tasks):
+
+        heapq.heappush(
+            heap,
+            (
+                get_sort_key(task, mode),
+                index,
+                task
+            )
+        )
+
+    sorted_tasks = []
+
+    while heap:
+
+        sorted_tasks.append(
+            heapq.heappop(heap)[2]
+        )
+
+    return sorted_tasks
+
+
+def sort_tasks(tasks, mode="priority", algorithm="timsort"):
+
+    if algorithm == "bubble":
+        return bubble_sort_tasks(tasks, mode)
+
+    elif algorithm == "heap":
+        return heap_sort_tasks(tasks, mode)
+
+    else:
+        return timsort_tasks(tasks, mode)
 # =========================
 # Todo Lists
 # =========================
@@ -86,6 +154,35 @@ def add_todo_list():
 
     entry_list_name.delete(0, tk.END)
 
+def delete_todo_list():
+
+    selected = listbox_lists.curselection()
+
+    if not selected:
+        messagebox.showwarning("警告", "請先選擇要刪除的清單")
+        return
+
+    list_name = listbox_lists.get(selected)
+
+    confirm = messagebox.askyesno(
+        "確認刪除",
+        f"確定要刪除清單「{list_name}」嗎？\n\n清單內的所有任務也會一起刪除。"
+    )
+
+    if not confirm:
+        return
+
+    data = load_data()
+
+    if list_name in data:
+        del data[list_name]
+
+    save_data(data)
+
+    refresh_lists()
+
+    for item in tree.get_children():
+        tree.delete(item)
 
 # =========================
 # 顯示任務
@@ -105,7 +202,16 @@ def show_tasks(event=None):
 
     data = load_data()
 
-    tasks = sort_tasks(data[list_name]["tasks"])
+    sort_mode = sort_mode_var.get()
+
+    sort_mode = sort_mode_var.get()
+    sort_algorithm = sort_algorithm_var.get()
+
+    tasks = sort_tasks(
+        data[list_name]["tasks"],
+        mode=sort_mode,
+        algorithm=sort_algorithm
+    )
 
     for task in tasks:
 
@@ -585,6 +691,17 @@ btn_add_list = tk.Button(
 
 btn_add_list.pack(pady=5)
 
+btn_delete_list = tk.Button(
+    left_frame,
+    text="刪除清單",
+    width=20,
+    bg="#444",
+    fg="white",
+    command=delete_todo_list
+)
+
+btn_delete_list.pack(pady=5)
+
 btn_reward = tk.Button(
     left_frame,
     text="設定獎勵",
@@ -612,6 +729,61 @@ right_frame.pack(
     expand=True,
     padx=10,
     pady=10
+)
+
+sort_frame = tk.Frame(
+    right_frame,
+    bg="#1e1e1e"
+)
+
+sort_frame.pack(pady=5)
+
+tk.Label(
+    sort_frame,
+    text="排序方式：",
+    bg="#1e1e1e",
+    fg="white"
+).pack(side=tk.LEFT, padx=5)
+
+sort_mode_var = tk.StringVar(value="priority")
+
+sort_combo = ttk.Combobox(
+    sort_frame,
+    textvariable=sort_mode_var,
+    values=["priority", "deadline"],
+    state="readonly",
+    width=15
+)
+
+sort_combo.pack(side=tk.LEFT)
+
+sort_combo.bind(
+    "<<ComboboxSelected>>",
+    show_tasks
+)
+
+tk.Label(
+    sort_frame,
+    text="排序演算法：",
+    bg="#1e1e1e",
+    fg="white"
+).pack(side=tk.LEFT, padx=5)
+
+sort_algorithm_var = tk.StringVar(value="timsort")
+
+algorithm_combo = ttk.Combobox(
+    sort_frame,
+    textvariable=sort_algorithm_var,
+    values=["timsort", "bubble", "heap"],
+    state="readonly",
+    width=15
+)
+
+algorithm_combo.pack(side=tk.LEFT)
+
+algorithm_combo.bind(
+    "<<ComboboxSelected>>",
+    show_tasks
 )
 
 columns = (
