@@ -61,14 +61,14 @@ Prototype與所有預期功能
 - 生成測試用資料
 
 ### 使用方式
-執行 Todo List 系統
+執行 Todo List 系統  
 -python main.py
 
-產生測試資料(因已生成過一次，一般不須再執行)
+產生測試資料(因已生成過一次，一般不須再執行)  
 -python generate_sorted_data.py
 
-執行演算法效能測試
-python benchmark_sort.py
+執行演算法效能測試  
+-python benchmark_sort.py
 
 ### 與課程的關聯總結
 在演算法方面，本專案探討了不同排序演算法在實際應用情境中的效能差異。透過實作 Bubble Sort、Heap Sort 與 Python 內建 Timsort，並使用 Benchmark 測試不同資料量下的執行時間。  
